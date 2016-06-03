@@ -2,6 +2,11 @@ package org.chenyang.algs4.chapter1.download;
 
 import edu.princeton.cs.algs4.StdOut;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+
 /**
  * Jaxel
  * Created with IntelliJ IDEA
@@ -16,13 +21,27 @@ import edu.princeton.cs.algs4.StdOut;
  *这样当本次下载没有完成的时候，下次下载的时候就从这个文件中读取上一次下载的文件长度，
  *然后继续接着上一次的位置开始下载。并且将本次下载的长度写入到这个文件中
  */
-public class Jaxel {
+public class Jaxel implements Runnable{
 
   private int threadNum;
 
   private String urlStr;
 
+  private long length;
+
+  private long blockSize;
+
+  private String fileName;
+
+  public Jaxel(String[] args) {
+    this.threadNum = 0;
+    this.parseArgs(args);
+  }
+
   public void usage() {
+    if (this.threadNum > 0)
+      return;
+
     StdOut.println("Usage: jaxel [options] url");
     StdOut.println("-s x\tSpecify maximum speed (bytes per second)\n" +
         "-n x\tSpecify maximum number of connections\n" +
@@ -40,6 +59,7 @@ public class Jaxel {
 
   private void parseArgs(String[] args) {
     int len = args.length;
+    if (len==0) return;
     for (int i=0; i<len; i++) {
       if (args[i].toLowerCase().equals("-n")) {
         this.threadNum = Integer.parseInt(args[i+1]);
@@ -54,44 +74,40 @@ public class Jaxel {
     this.urlStr = args[len-1];
   }
 
+  public void run() {
+    try {
+      //first should get the url information
+      // so that it could be divided into parts for thread to download
+      //
+      prepareUrlInfo();
+      for (int i = 0; i < threadNum; i++) {
+        DownloadThread thread = new DownloadThread(this.urlStr, i*blockSize, (i+1)*blockSize, fileName);
+        thread.start();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void prepareUrlInfo() {
+    try {
+      URL url = new URL(urlStr);
+      HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+      length = httpURLConnection.getContentLength();
+      blockSize = length / threadNum + (length%threadNum==0?0:1);
+
+      String filename = url.getPath();
+      String[] path = filename.split("/");
+      fileName = path[path.length-1];
+    } catch (MalformedURLException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
   public static void main(String[] args) {
-    Jaxel jaxel = new Jaxel();
-    jaxel.usage();
-    jaxel.parseArgs(args);
-
+    Jaxel jaxel = new Jaxel(args);
+    jaxel.run();
   }
 
-}
-
-
-/**
- * LogUtil 日志类
- * @author chenyang
- *
- */
-abstract class LogUtils {
-
-  public static void log(Object message) {
-    System.err.println(message);
-  }
-
-  public static void log(String message) {
-    System.err.println(message);
-  }
-
-  public static void log(int message) {
-    System.err.println(message);
-  }
-
-  public static void info(Object message) {
-    System.out.println(message);
-  }
-
-  public static void info(String message) {
-    System.out.println(message);
-  }
-
-  public static void info(int message) {
-    System.out.println(message);
-  }
 }

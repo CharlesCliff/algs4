@@ -1,5 +1,8 @@
 package org.chenyang.algs4.chapter1.download;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -15,7 +18,9 @@ import java.net.URL;
  */
 public class DownloadThread extends Thread {
 
-  private static int BYTE_LEN = 512;
+  final private static int BYTE_LEN = 1024;
+
+  private static final Logger logger = LoggerFactory.getLogger(DownloadThread.class);
 
   private URL url;
 
@@ -49,18 +54,23 @@ public class DownloadThread extends Thread {
   @Override
   public void run() {
 
+    logger.info("thread....{}....begin\n", Thread.currentThread().getId());
     try {
       initHttpConnection();
-      int length = httpURLConnection.getContentLength();
-      this.endPos = length;
       byte[] buffer = new byte[BYTE_LEN];
       InputStream inputStream = httpURLConnection.getInputStream();
 
-      while((length=inputStream.read(buffer))>0 && startPos<endPos )
-        startPos += file.write(buffer,0,length);
-
+      int length = -1;
+      while((length=inputStream.read(buffer))>0 && startPos<endPos ) {
+        startPos += file.write(buffer, 0, length);
+        logger.info("thread...{}...downloading...{}",
+            Thread.currentThread().getId(),
+            startPos);
+      }
+      logger.info("thread....{}....end\n", Thread.currentThread().getId());
     } catch (IOException e) {
       e.printStackTrace();
+      logger.debug("test logger");
     } finally {
       closeFile(file);
     }
